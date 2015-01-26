@@ -1,0 +1,420 @@
+FORMAT: 1A
+
+# Intershop-OMS
+General API documentation of the Intershop OMS.
+
+# General
+##Authorization
+To authorize a user, a authorization token must be passed as `Authorization` parameter in the header of the request. To build the authorization token you have to combine the user and the passwort, separated by a : (eg. username:password), and encrypt it with base64. 
+
+    Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
+
+##Allowed HTTPs requests
+* `POST` - Creates or updates a resource
+* `PUT` - Updates a resource
+* `GET` - Retrieves a resource or list of resources
+* `DELETE` - Delete a resource
+
+##Typical Server Responses
+* `200` OK - The request was successful.
+* `201` Created - The request was successful and a resource was created.
+* `204` No Content - The request was successful but there is no representation to return (that is, the response is empty).
+* `400` Bad Request - The request could not be understood or was missing required parameters.
+* `401` Unauthorized - Authentication failed or user does not have permissions for the requested operation.
+* `403` Forbidden - Access denied.
+* `404` Not Found - Resource was not found.
+* `405` Method Not Allowed - Requested method is not supported for the specified resource.
+* `503` Service Unavailable - The service is temporary unavailable (e.g. scheduled Platform Maintenance). Try again later.
+
+# Response
+## Response Envelope
+All API responses will be returned in the following envelope. Warnings, errors, and exceptions only present when relevant.
+
+        {
+            "data": {
+                "valid-until": "2014-12-19 11:25:00",
+                "resvId": "sdfdk43ß445lksld0394",
+                "items": [
+                    {
+                        "id": "BDJs-3432",
+                        "qty": 2,
+                        "state": "reserved"
+                    },
+                    {
+                        "id": "AFEz-5562",
+                        "qty": 1,
+                        "state": "reserved"
+                    }
+                ]
+            },
+            "errors": [],
+            "exceptions": []
+        }
+    
+## Data 
+`data` contains the resource object for a success, typically a status code 200.
+
+##Errors and Exceptions
+
+`errors` contains validation errors when a request fails. On a success, this data is empty.
+
+    "errors": [
+        {
+            "message": "The value must be an integer",
+            "sourceField": "qty"
+        },
+        {
+            "message": "The reservation type is invalid",
+            "sourceField": "type"
+        },
+        {
+            "message": "required",
+            "sourceField": "shop"
+        },
+    ]
+    
+`exceptions` contains exceptions that are thrown when a request fails due to an invalid request or code error. On a success, this data is empty. 
+
+    "exceptions": [
+        {
+            "code": "20001",
+            "message": "The requested id BDJs-3432 was not found "
+        },
+        {
+            "code": "20002",
+            "message": "The requested shop 1 was not found "
+        }
+    ]
+
+# Group Reservations
+Documentation related to the resources of the **Reservation API**
+
+## Create Reservation [/api/v1/{shopId}/reservation/]
+
++ Parameters
+    + shopId (required, number, `2`) ... `shopId` of the shop or sales channel.
+
+### Create a reservation [POST]
+To create a reservation, you use a POST method. You can create a reservation using shop id, the unique product code and quantity being reserved. The response provides a 201 status code on success with the reserved products, the state of the reservation and a unique reservation reference id for later modification of the reservation.
+
+#### Request Attributes
+
+| Attribute                             | Description                |
+|----------------------------------     |---------------------------    |
+| `lifetime`                            | The lifetime of the reservation in seconds. Default 10 minutes.|
+| `type`                                | The reservation type. `COMPLETE`: products are only reserved if all products of the request are reservable. `PARTLY`: products are reserved, even when one ore more of the reserved products are not reservable. Default is `COMPLETE`|
+
+| Item Attribute                        | Description                |
+|----------------------------------     |---------------------------    |
+| `id`*                                 | The id of the product. Via the OMS configurations it is determined if it is the shop or oms product id        |
+| `qty`*                                | Reserved quantity|
+
+#### Response Attributes
+
+| Attribute                             | Description                |
+|----------------------------------     |---------------------------    |
+| `valid-until`                         | The time until the reservation is valid|
+| `resvId`                              | The unique reference for the reservation|
+
+| Item Attribute                        | Description                |
+|----------------------------------     |---------------------------    |
+| `id`                                  | The id of the product. Via the OMS configurations it is determined if it is the shop or oms product id        |
+| `qty`                                 | Quantity to reserve|
+| `state`                               | State of the reservation. The product was sucessfully `reserved` or the reservation was `canceld` |
+
++ Request
+
+      + Headers
+
+            Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
+            
+      + Body
+
+            [
+                {
+                    "lifetime": 1800,
+                    "type": "COMPLETE",
+                    "items": [
+                        {
+                            "id": "BDJs-3432",
+                            "qty": 2
+                        },
+                        {
+                            "id": "AFEz-5562",
+                            "qty": 1
+                        }
+                    ]
+                }
+            ]
+
++ Response 201 (application/json)
+
+            [
+                {
+                    "data": [
+                        {
+                            "valid-until": "2014-12-19  11:25:00",
+                            "resvId": "sdfdk43ß445lksld0394",
+                            "items": [
+                                {
+                                    "id": "BDJs-3432",
+                                    "qty": 2,
+                                    "state": "reserved"
+                                },
+                                {
+                                    "id": "AFEz-5562",
+                                    "qty": 1,
+                                    "state": "reserved"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        
++ Response 400 (application/json)
+
+            [
+                {
+                    "errors": [
+                        {
+                            "message": "The value must be an integer",
+                            "sourceField": "qty"
+                        },
+                        {
+                            "message": "The reservation type is invalid",
+                            "sourceField": "type"
+                        },
+                        {
+                            "message": "required",
+                            "sourceField": "shop"
+                        }
+                    ],
+                    "exceptions": [
+                        {
+                            "code": "20001",
+                            "message": "The requested id BDJs-3432 was not found "
+                        },
+                        {
+                            "code": "20002",
+                            "message": "The requested shop 1 was not found "
+                        }
+                    ]
+                }
+            ]
+
+## Reservation [/api/v1/{shopId}/reservation/{resvId}]
+
++ Parameters
+    + resvId (required, number, `1`) ... Numeric `resvId` reference of the reservation.
+    + shopId (required, number, `2`) ... `shopId` of the shop or sales channel.
+
+### Get a reservation [GET]
+Used to get a reservation. You usally call this method to check the lifetime of a reservation.
+
+#### Response Attributes
+
+| Attribute                             | Description                |
+|----------------------------------     |---------------------------    |
+| `valid-until`                         | The time until the reservation is valid|
+
+| Item Attribute                        | Description                |
+|----------------------------------     |---------------------------    |
+| `id`                                  | The id of the product. Via the OMS configurations it is determined if it is the shop or oms product id        |
+| `qty`                                 | Quantity to reserve|
+| `state`                               | State of the reservation. The product was sucessfully `reserved` or the reservation was `canceld` |
+
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
+
++ Response 200 (application/json)
+
+    + Body
+
+            [
+                {
+                    "data": [
+                        {
+                            "valid-until": "2014-12-19 11:25:00",
+                            "items": [
+                                {
+                                    "id": "BDJs-3432",
+                                    "qty": 2,
+                                    "state": "reserved"
+                                },
+                                {
+                                    "id": "AFEz-5562",
+                                    "qty": 1,
+                                    "state": "reserved"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+
+### Delete a reservation [DELETE]
+
+Used to delete a reservation. You usually call this method to delete and create a new reservation or when the reservation should be deleted because of an user interaction.
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
+
++ Response 204
+    
+### Update reservation [PUT]
+
+This `PUT` method update or add existing or new data of the reservation. Unlike the `POST` method to add a reservation, this method updates specific information for a reservation. You can update the livetime, the reservation type or the items.
+
+#### Request Attributes
+
+| Attribute                             | Description                |
+|----------------------------------     |---------------------------    |
+| `lifetime`                            | The lifetime of the reservation in seconds. Default 10 minutes.|
+| `type`                                | The reservation type. `COMPLETE`: products are only reserved if all products of the request are reservable. `PARTLY`: products are reserved, even when one ore more of the reserved products are not reservable. Default is `COMPLETE`|
+
+| Item Attribute                        | Description                |
+|----------------------------------     |---------------------------    |
+| `id`*                                 | The id of the product. Via the OMS configurations it is determined if it is the shop or oms product id        |
+| `qty`*                                | Reserved quantity|
+
+#### Response Attributes
+
+| Attribute                             | Description                |
+|----------------------------------     |---------------------------    |
+| `valid-until`                         | The time until the reservation is valid|
+
+| Item Attribute                        | Description                |
+|----------------------------------     |---------------------------    |
+| `id`                                  | The id of the product. Via the OMS configurations it is determined if it is the shop or oms product id        |
+| `qty`                                 | Quantity to reserve|
+| `state`                               | State of the reservation. The product was sucessfully `reserved` or the reservation was `canceld` |
+
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
+            
+    + Body
+
+            [
+                {
+                    "lifetime": 1800,
+                    "type": "COMPLETE",
+                    "items": [
+                        {
+                            "id": "BDJs-3432",
+                            "qty": 2
+                        },
+                        {
+                            "id": "AFEz-5562",
+                            "qty": 1
+                        }
+                    ]
+                }
+            ]
+
++ Response 201 (application/json)
+
+            [
+                {
+                    "data": [
+                        {
+                            "valid-until": "2014-12-19 11:25:00",
+                            "items": [
+                                {
+                                    "id": "BDJs-3432",
+                                    "qty": 2,
+                                    "state": "reserved"
+                                },
+                                {
+                                    "id": "AFEz-5562",
+                                    "qty": 1,
+                                    "state": "reserved"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+
+# Group ATP
+Documentation related to the resources of the **ATP API**. The ATP (Available to Sell) is calculated by the OMS systems and reflects the sellable stock of one shop or sales channel. The ATP is calculated in the following way:
+available stock - number of stocks for the given product that are currently unfulfilled or not canceled - number of reserved stocks for the given product
+
+## ATP [/api/v1/{shopId}/atp/{id},{id}{?resvId}]
+
++ Parameters
+    + id (required, `BDJs-3432`) ... `id` or a comma seperated list of requested product id(s). Via the OMS configurations it is determined if the shop or oms product id must be used in the call
+    + shopId (required, number, `2`) ... `id` of the shop or sales channel.
+    + resvId (optional, `sdfdk43ß445lksld0394`) ... `id` of the reservation. Used to exclude the reserved stock from the ATP
+    
+### Get ATP [GET]
+
+Used to get the ATP for one or a list product(s). You usally call this method to check the ATP for the desired product or to check the ATP for several products at the same time (e.g. basket).
+
+#### Response Attributes
+
+| Attribute                             | Description                |
+|----------------------------------     |---------------------------    |
+| `id`                                  | Id of the requested product|
+| `stock`                               | The stock of the product|
+| `atp`                                 | ATP of the requested product|
+| `reserved`                            | Reserved stock|
+| `blocked`                             | Blocked stock of all open orders |
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
+
++ Response 200 (application/json)
+
+            [
+                {
+                    "data": [
+                        {
+                            "id": "BDJs-3432",
+                            "stock": 27,
+                            "atp": 12,
+                            "reserved": 5,
+                            "blocked": 10
+                        },
+                        {
+                            "id": "AFEz-5562",
+                            "stock": 20,
+                            "atp": 4,
+                            "reserved": 4,
+                            "blocked": 12
+                        }
+                    ]
+                }
+            ]
+        
++ Response 400 (application/json)
+
+            [
+                {
+                    "exceptions": [
+                        {
+                            "code": "21001",
+                            "message": "The requested id BDJs-3432 was not found "
+                        },
+                        {
+                            "code": "21002",
+                            "message": "The requested reservation id sdfdk43ß445lksld0394 was not found "
+                        }
+                    ]
+                }
+            ]
+        
